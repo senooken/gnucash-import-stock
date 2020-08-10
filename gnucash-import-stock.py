@@ -60,9 +60,23 @@
 import csv
 import datetime
 import random
+import pathlib
 
-with open('株式約定履歴.csv', newline='', encoding='cp932') as trade_file, \
-     open('信用決済履歴.csv', newline='', encoding='cp932') as pay_file, \
+## 決められたファイル名のcsvがない場合に*.csvを1個ずつ中身を確認して自動判定する処理を用意したい。
+## いちいち，岡三オンライン証券からダウンロード後にファイル名の変更が手間だから。
+
+trade_csv = '株式約定履歴.csv'
+pay_csv = '信用決済履歴.csv'
+
+## *.csvファイルから株式約定履歴と信用決済履歴を識別
+for csv in pathlib.Path('.').glob('*.csv'):
+    with csv.open(encoding='cp932') as f:
+        header = f.readline()
+        if header == '株式約定履歴': trade_csv = csv.name
+        elif header == '信用決済履歴': pay_csv = csv.name
+
+with open(trade_csv, newline='', encoding='cp932') as trade_file, \
+     open(pay_csv, newline='', encoding='cp932') as pay_file, \
      open('一覧.csv', 'w', newline='', encoding='cp932') as list_file, \
      open('import.csv', 'w', newline='') as import_file:
     ## 株式約定履歴.csvの取り込み
