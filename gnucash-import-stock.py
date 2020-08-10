@@ -63,7 +63,7 @@ import random
 
 with open('株式約定履歴.csv', newline='', encoding='cp932') as trade_file, \
      open('信用決済履歴.csv', newline='', encoding='cp932') as pay_file, \
-     open('一覧.csv', 'w', newline='') as list_file, \
+     open('一覧.csv', 'w', newline='', encoding='cp932') as list_file, \
      open('import.csv', 'w', newline='') as import_file:
     ## 株式約定履歴.csvの取り込み
     SKIP_HEADER_LINES = 7
