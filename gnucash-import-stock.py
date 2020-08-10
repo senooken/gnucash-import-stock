@@ -17,7 +17,6 @@
 3. 1.決済代金，2.取引区分，3.銘柄名，4.約定日，の順番にソート。
 4. [信用決済履歴.csv] を読み込む。
 5. 3と同じようにソート。
-6. GnuCa
 '''
 
 '''
@@ -93,17 +92,14 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
                                  , '金利' : 0, '決済損益': 0})
         trade.append(dic)
 
-
     ## 決済代金の計算
     # 受渡金額にすると，手数料の考慮が面倒くさいので，決済代金にする。
-
     ## 信用決済履歴.csvの取り込み
     SKIP_HEADER_LINES = 16
     for i in range(SKIP_HEADER_LINES):
         pay_file.readline()
 
     reader = csv.DictReader(pay_file)
-
 
     ## 株式約定履歴に信用決済履歴の金利と決済損益を取り込む。
     for row_trade in trade:
@@ -116,8 +112,6 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
         row_trade['決済損益'] = row_pay['決済損益']
         row_trade['売買代金'] -= (int(row_trade['手数料/諸経費等']) + int(row_trade['税額']))*2 + int(row_pay['金利'])
 
-    # trade = sorted(trade, key=lambda dic: (dic['決済代金'], dic['銘柄コード']\
-    #                                        ,dic['取引区分'] , dic['約定日']))
     trade = sorted(trade, key=lambda dic: (dic['約定日'], dic['取引区分'], dic['銘柄コード'] ,dic['決済代金']))
 
     writer = csv.DictWriter(list_file, fieldnames=trade[0].keys());
@@ -147,9 +141,7 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
     # ,,,,,,,,売買損益,個人.資産:流動資産:有価証券:信用:岡三オンライン証券:株式:9973 小僧寿し,9973 小僧寿し,0 9973,0,c,,0
     # ,,,,,,,,,個人.収益:営業外収益:分離課税:有価証券売却益:岡三オンライン証券,岡三オンライン証券,"JP¥-19,395",-19395,c,,1
 
-
     header = 'Date,Transaction ID,Number,Description,Notes,Commodity/Currency,Void Reason,Action,Memo,Full Account Name,Account Name,Amount With Sym,Amount Num.,Reconcile,Reconcile Date,Rate/Price'.split(',')
-    # out = dict.fromkeys()
 
     BASE_ACCOUNT = '個人.資産:流動資産:有価証券:信用:岡三オンライン証券:株式:'
     BASE_LIABILITY = '個人.負債:流動負債:未払金:有価証券:信用:岡三オンライン証券'
