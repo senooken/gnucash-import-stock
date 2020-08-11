@@ -150,6 +150,9 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
     BASE_FEE = '個人.費用:営業外費用:その他:支払手数料:証券会社:岡三オンライン証券'
     BASE_RATE = '個人.費用:営業外費用:利子割引料:岡三オンライン証券'
     BASE_ASSET = '個人.資産:流動資産:未収入金:有価証券:岡三オンライン証券'
+    BASE_NATIONAL_TAX = '個人.費用:営業費用:販売費及び一般管理費:一般管理費:税金:国税:所得税:株式'
+    BASE_LOCAL_TAX = '個人.費用:営業費用:販売費及び一般管理費:一般管理費:税金:地方税:道府県税:普通税:道府県民税:株式等譲渡所得割'
+    BASE_BANK = '個人.資産:流動資産:その他:差入保証金:岡三オンライン証券'
 
     out = []
 
@@ -252,6 +255,50 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
             else:
                 dic7['Full Account Name'] = BASE_LOSS
             out.append(dic7)
+
+    ## 精算
+    dic = {}
+    dic['Date'] = row['約定日']
+    dic['Reconcile'] = 'c'
+    dic['Commodity/Currency'] = 'CURRENCY::JPY'
+
+    now = datetime.datetime.now()
+    tid = now.strftime('%Y%m%d%H%M%S%f')  # 20桁
+    tid += '{:012}'.format(int(str(random.random())[2:14])) # +12桁
+    dic['Transaction ID'] = tid # 32桁
+
+    # 1行目
+    dic1 = dic.copy()
+    dic1['Description'] = '精算'
+    dic1['Full Account Name'] = BASE_BANK
+    dic1['Rate/Price'] = 1
+    out.append(dic1)
+
+    # 2行目
+    dic2 = dic1.copy()
+    del dic2['Date'], dic2['Description'], dic2['Commodity/Currency'], \
+        dic2['Transaction ID']
+    dic2['Memo'] = '譲渡益税徴収額'
+    dic2['Full Account Name'] = BASE_NATIONAL_TAX
+    out.append(dic2)
+
+    # 3行目
+    dic3 = dic2.copy()
+    dic3['Memo'] = '譲渡益税徴収額'
+    dic3['Full Account Name'] = BASE_LOCAL_TAX
+    out.append(dic3)
+
+    # 4行目
+    dic4 = dic3.copy()
+    dic4['Memo'] = '信用買'
+    dic4['Full Account Name'] = BASE_LIABILITY
+    out.append(dic4)
+
+    # 5行目
+    dic5 = dic4.copy()
+    dic5['Memo'] = '信用売'
+    dic5['Full Account Name'] = BASE_ASSET
+    out.append(dic5)
 
     '''
     必須
