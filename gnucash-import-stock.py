@@ -77,7 +77,7 @@ for file in pathlib.Path('.').glob('*.csv'):
 with open(trade_csv, newline='', encoding='cp932') as trade_file, \
      open(pay_csv, newline='', encoding='cp932') as pay_file, \
      open('一覧.csv', 'w', newline='', encoding='cp932') as list_file, \
-     open('import.csv', 'w', newline='') as import_file:
+     open('import.csv', 'w', newline='', encoding='cp932') as import_file:
     ## 株式約定履歴.csvの取り込み
     SKIP_HEADER_LINES = 7
     for i in range(SKIP_HEADER_LINES):
