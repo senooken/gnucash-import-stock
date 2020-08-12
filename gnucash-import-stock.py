@@ -156,7 +156,13 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
 
     out = []
 
+    total_liability = 0
+    total_asset = 0
+
     for row in trade:
+        if row['取引区分'] == '信新買': total_liability += row['売買代金']
+        elif row['取引区分'] == '信返売': total_asset += row['売買代金']
+
         STOCK_NAME = row['銘柄コード'][0] + '000:' + row['銘柄コード'] + ' ' + row['銘柄名']
         dic = {}
         dic['Date'] = row['約定日']
@@ -168,7 +174,7 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
         tid += '{:012}'.format(int(str(random.random())[2:14])) # +12桁
         dic['Transaction ID'] = tid # 32桁
 
-        if '信新買' == row['取引区分']:
+        if row['取引区分'] == '信新買':
             # 1行目
             dic1 = dic.copy()
             dic1['Description'] = '買付'
@@ -202,7 +208,7 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
             dic4['Amount Num.'] = '-' + str(row['売買代金'])
             out.append(dic4)
 
-        elif '信返売' == row['取引区分']:
+        elif row['取引区分'] == '信返売':
             # 1行目
             dic1 = dic.copy()
             dic1['Description'] = '売付'
@@ -272,12 +278,13 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
     dic1['Description'] = '精算'
     dic1['Full Account Name'] = BASE_BANK
     dic1['Rate/Price'] = 1
+    dic1['Amount Num.'] = total_asset - total_liability
     out.append(dic1)
 
     # 2行目
     dic2 = dic1.copy()
     del dic2['Date'], dic2['Description'], dic2['Commodity/Currency'], \
-        dic2['Transaction ID']
+        dic2['Amount Num.'], dic2['Transaction ID']
     dic2['Memo'] = '譲渡益税徴収額'
     dic2['Full Account Name'] = BASE_NATIONAL_TAX
     out.append(dic2)
@@ -292,12 +299,14 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
     dic4 = dic3.copy()
     dic4['Memo'] = '信用買'
     dic4['Full Account Name'] = BASE_LIABILITY
+    dic4['Amount Num.'] = -total_liability
     out.append(dic4)
 
     # 5行目
     dic5 = dic4.copy()
     dic5['Memo'] = '信用売'
     dic5['Full Account Name'] = BASE_ASSET
+    dic5['Amount Num.'] = total_asset
     out.append(dic5)
 
     '''
