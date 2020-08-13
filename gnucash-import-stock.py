@@ -278,7 +278,7 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
     dic1['Description'] = '精算'
     dic1['Full Account Name'] = BASE_BANK
     dic1['Rate/Price'] = 1
-    dic1['Amount Num.'] = total_asset - total_liability
+    dic1['Amount Num.'] = total_liability - total_asset
     out.append(dic1)
 
     # 2行目
