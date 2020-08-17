@@ -278,7 +278,7 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
     dic1['Description'] = '精算'
     dic1['Full Account Name'] = BASE_BANK
     dic1['Rate/Price'] = 1
-    dic1['Amount Num.'] = total_liability - total_asset
+    dic1['Amount Num.'] = total_asset - total_liability
     out.append(dic1)
 
     # 2行目
@@ -299,14 +299,14 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
     dic4 = dic3.copy()
     dic4['Memo'] = '信用買'
     dic4['Full Account Name'] = BASE_LIABILITY
-    dic4['Amount Num.'] = -total_liability
+    dic4['Amount Num.'] = total_liability
     out.append(dic4)
 
     # 5行目
     dic5 = dic4.copy()
     dic5['Memo'] = '信用売'
     dic5['Full Account Name'] = BASE_ASSET
-    dic5['Amount Num.'] = total_asset
+    dic5['Amount Num.'] = -total_asset
     out.append(dic5)
 
     '''
