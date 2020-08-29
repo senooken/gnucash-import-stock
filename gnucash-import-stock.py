@@ -105,7 +105,9 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
     for row_trade in trade:
         row_trade['売買代金'] = int(row_trade['決済代金']) \
             + int(row_trade['手数料/諸経費等']) + int(row_trade['税額'])
-        if '信返売' != row_trade['取引区分']: continue
+        if row_trade['取引区分'] == '現物売':
+            row_trade['売買代金'] = int(row_trade['受渡金額'])
+        if row_trade['取引区分'] != '信返売': continue
 
         row_pay = next(reader)
         row_trade['金利'] = row_pay['金利']
@@ -143,8 +145,11 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
 
     header = 'Date,Transaction ID,Number,Description,Notes,Commodity/Currency,Void Reason,Action,Memo,Full Account Name,Account Name,Amount With Sym,Amount Num.,Reconcile,Reconcile Date,Rate/Price'.split(',')
 
-    BASE_ACCOUNT = '個人.資産:流動資産:有価証券:信用:岡三オンライン証券:株式:'
-    BASE_LIABILITY = '個人.負債:流動負債:未払金:有価証券:信用:岡三オンライン証券'
+    # BASE_ACCOUNT = '個人.資産:流動資産:有価証券:信用:岡三オンライン証券:株式:'
+    # BASE_LIABILITY = '個人.負債:流動負債:未払金:有価証券:信用:岡三オンライン証券'
+    BASE_ACCOUNT = '個人.資産:流動資産:有価証券:'
+    BASE_LIABILITY = '個人.負債:流動負債:未払金:有価証券:'
+
     BASE_LOSS = '個人.費用:営業外費用:有価証券売却損:岡三オンライン証券'
     BASE_INCOME = '個人.収益:営業外収益:分離課税:有価証券売却益:岡三オンライン証券'
     BASE_FEE = '個人.費用:営業外費用:その他:支払手数料:証券会社:岡三オンライン証券'
@@ -156,12 +161,17 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
 
     out = []
 
-    total_liability = 0
-    total_asset = 0
+    total_spot_liability = 0
+    total_spot_asset = 0
+    total_credit_liability = 0
+    total_credit_asset = 0
+
 
     for row in trade:
-        if row['取引区分'] == '信新買': total_liability += row['売買代金']
-        elif row['取引区分'] == '信返売': total_asset += row['売買代金']
+        if row['取引区分'] == '現物買': total_spot_liability += row['売買代金']
+        if row['取引区分'] == '現物売': total_spot_asset += row['売買代金']
+        elif row['取引区分'] == '信新買': total_credit_liability += row['売買代金']
+        elif row['取引区分'] == '信返売': total_credit_asset += row['売買代金']
 
         STOCK_NAME = row['銘柄コード'][0] + '000:' + row['銘柄コード'] + ' ' + row['銘柄名']
         dic = {}
@@ -174,11 +184,74 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
         tid += '{:012}'.format(int(str(random.random())[2:14])) # +12桁
         dic['Transaction ID'] = tid # 32桁
 
-        if row['取引区分'] == '信新買':
+        BASE_SPOT_ACCOUNT = BASE_ACCOUNT + '現物:岡三オンライン証券:株式:'
+        BASE_SPOT_LIABILITY = BASE_LIABILITY + '現物:岡三オンライン証券'
+        BASE_CREDIT_ACCOUNT = BASE_ACCOUNT + '信用:岡三オンライン証券:株式:'
+        BASE_CREDIT_LIABILITY = BASE_LIABILITY + '信用:岡三オンライン証券'
+
+        if row['取引区分'] == '現物売':
+            # 1行目: 約定
+            dic1 = dic.copy()
+            dic1['Description'] = '売付'
+            dic1['Full Account Name'] = BASE_SPOT_ACCOUNT + STOCK_NAME
+            dic1['Amount Num.'] = '-' + row['約定数量']
+            dic1['Rate/Price'] = row['約定単価']
+            out.append(dic1)
+
+            # 2行目: 手数料
+            dic2 = dic1.copy()
+            del dic2['Date'], dic2['Description'], dic2['Commodity/Currency'], \
+                dic2['Transaction ID']
+            dic2['Full Account Name'] = BASE_FEE
+            dic2['Amount Num.'] = row['手数料/諸経費等']
+            dic2['Rate/Price'] = 1
+            out.append(dic2)
+
+            # 3行目: 消費税
+            dic3 = dic2.copy()
+            dic3['Memo'] = '消費税'
+            dic3['Amount Num.'] = row['税額']
+            out.append(dic3)
+
+            # 4行目: 売買代金
+            dic4 = dic3.copy()
+            del dic4['Memo']
+            dic4['Full Account Name'] = BASE_ASSET
+            dic4['Amount Num.'] = row['売買代金']
+            out.append(dic4)
+
+            # 5行目: 売買損益
+            dic5 = dic4.copy()
+            dic5['Memo'] = '売買損益'
+            dic5['Full Account Name'] = BASE_SPOT_ACCOUNT + STOCK_NAME
+            dic5['Amount Num.'] = row['決済損益']
+            out.append(dic5)
+
+            ## TODO: 現物の決済損益は譲渡益税.csvから読み取りが必要
+            # 6行目: 損益
+            dic6 = dic5.copy()
+            del dic6['Memo']
+            dic6['Amount Num.'] = -1 * int(row['決済損益'])
+
+            dic6['Full Account Name'] = BASE_INCOME
+            # if int(row['決済損益']) > 0:
+            #     dic6['Full Account Name'] = BASE_INCOME
+            # else:
+            #     dic6['Full Account Name'] = BASE_LOSS
+            out.append(dic6)
+
+        elif (row['取引区分'] == '現物買') or (row['取引区分'] == '信新買') :
+            if row['取引区分'].startswith('現物'):
+                ACCOUNT = BASE_SPOT_ACCOUNT
+                LIABILITY = BASE_SPOT_LIABILITY
+            else:
+                ACCOUNT = BASE_CREDIT_ACCOUNT
+                LIABILITY = BASE_CREDIT_LIABILITY
+
             # 1行目
             dic1 = dic.copy()
             dic1['Description'] = '買付'
-            dic1['Full Account Name'] = BASE_ACCOUNT + STOCK_NAME
+            dic1['Full Account Name'] = ACCOUNT + STOCK_NAME
             dic1['Amount Num.'] = row['約定数量']
             dic1['Rate/Price'] = row['約定単価']
             out.append(dic1)
@@ -188,7 +261,6 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
             del dic2['Date'], dic2['Description'], dic2['Commodity/Currency'], \
                 dic2['Transaction ID']
             # , dic['Action']
-            dic2['Full Account Name'] = BASE_ACCOUNT + STOCK_NAME
             dic2['Rate/Price'] = 1
             dic2['Memo'] = '手数料'
             dic2['Amount Num.'] = row['手数料/諸経費等']
@@ -196,7 +268,6 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
 
             # 3行目
             dic3 = dic2.copy()
-            dic3['Full Account Name'] = BASE_ACCOUNT + STOCK_NAME
             dic3['Memo'] = '消費税'
             dic3['Amount Num.'] = row['税額']
             out.append(dic3)
@@ -204,7 +275,7 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
             # 4行目
             dic4 = dic3.copy()
             del dic4['Memo']
-            dic4['Full Account Name'] = BASE_LIABILITY
+            dic4['Full Account Name'] = LIABILITY
             dic4['Amount Num.'] = '-' + str(row['売買代金'])
             out.append(dic4)
 
@@ -212,7 +283,7 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
             # 1行目
             dic1 = dic.copy()
             dic1['Description'] = '売付'
-            dic1['Full Account Name'] = BASE_ACCOUNT + STOCK_NAME
+            dic1['Full Account Name'] = BASE_CREDIT_ACCOUNT + STOCK_NAME
             dic1['Amount Num.'] = '-' + row['約定数量']
             dic1['Rate/Price'] = row['約定単価']
             out.append(dic1)
@@ -248,7 +319,7 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
             # 6行目
             dic6 = dic5.copy()
             dic6['Memo'] = '売買損益'
-            dic6['Full Account Name'] = BASE_ACCOUNT + STOCK_NAME
+            dic6['Full Account Name'] = BASE_CREDIT_ACCOUNT + STOCK_NAME
             dic6['Amount Num.'] = row['決済損益']
             out.append(dic6)
 
@@ -284,10 +355,11 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
     dic1['Description'] = '精算'
     dic1['Full Account Name'] = BASE_BANK
     dic1['Rate/Price'] = 1
-    dic1['Amount Num.'] = total_asset - total_liability
+    dic1['Amount Num.'] = total_spot_asset - total_spot_liability \
+        + total_credit_asset - total_credit_liability
     out.append(dic1)
 
-    # 2行目
+    # 2行目: 譲渡益税徴収額 (所得税)
     dic2 = dic1.copy()
     del dic2['Date'], dic2['Description'], dic2['Commodity/Currency'], \
         dic2['Amount Num.'], dic2['Transaction ID']
@@ -295,25 +367,39 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
     dic2['Full Account Name'] = BASE_NATIONAL_TAX
     out.append(dic2)
 
-    # 3行目
+    # 3行目: 譲渡益税徴収額 (地方税)
     dic3 = dic2.copy()
     dic3['Memo'] = '譲渡益税徴収額'
     dic3['Full Account Name'] = BASE_LOCAL_TAX
     out.append(dic3)
 
-    # 4行目
+    # 4行目: 現物買
     dic4 = dic3.copy()
-    dic4['Memo'] = '信用買'
-    dic4['Full Account Name'] = BASE_LIABILITY
-    dic4['Amount Num.'] = total_liability
+    dic4['Memo'] = '現物買'
+    dic4['Full Account Name'] = BASE_SPOT_LIABILITY
+    dic4['Amount Num.'] = -total_spot_liability
     out.append(dic4)
 
-    # 5行目
+    # 5行目: 現物売
     dic5 = dic4.copy()
-    dic5['Memo'] = '信用売'
+    dic5['Memo'] = '現物売'
     dic5['Full Account Name'] = BASE_ASSET
-    dic5['Amount Num.'] = -total_asset
+    dic5['Amount Num.'] = -total_spot_asset
     out.append(dic5)
+
+    # 6行目: 信用買
+    dic6 = dic5.copy()
+    dic6['Memo'] = '信用買'
+    dic6['Full Account Name'] = BASE_CREDIT_LIABILITY
+    dic6['Amount Num.'] = total_credit_liability
+    out.append(dic6)
+
+    # 7行目: 信用売
+    dic7 = dic6.copy()
+    dic7['Memo'] = '信用売'
+    dic7['Full Account Name'] = BASE_ASSET
+    dic7['Amount Num.'] = -total_credit_asset
+    out.append(dic7)
 
     '''
     必須

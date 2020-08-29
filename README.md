@@ -82,10 +82,10 @@ Account IDはソースコード内で決め打ちで入力しているため，�
 ![Transaction After](image/transaction-trade-after.jpg)
 
 ## TODO
-- 精算の仕訳の作成
-  + 日付
+- dic1などの処理の効率化
+- 精算日の祝日の考慮
 - 信用売への対応
-- 現物売買への対応
+- 現物売への対応
 - 文字エンコーディングの自動判定
 - GnuCah Python Bindingを用いた手数料と売買損益の正確な入力
 - 他の証券会社への対応
