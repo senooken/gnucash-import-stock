@@ -377,7 +377,7 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
     dic4 = dic3.copy()
     dic4['Memo'] = '現物買'
     dic4['Full Account Name'] = BASE_SPOT_LIABILITY
-    dic4['Amount Num.'] = -total_spot_liability
+    dic4['Amount Num.'] = total_spot_liability
     out.append(dic4)
 
     # 5行目: 現物売
