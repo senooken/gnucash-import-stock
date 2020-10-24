@@ -334,7 +334,6 @@ with open(trade_csv, newline='', encoding='cp932') as trade_file, \
             out.append(dic7)
 
     ## 精算
-    ## TODO: jpholydayを使って祝日も考慮
     pay_date = datetime.datetime.strptime(row['約定日'], '%Y/%m/%d')
     pay_date += datetime.timedelta(days=2)
     if (pay_date.isoweekday() > 5):
